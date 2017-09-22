@@ -20,8 +20,10 @@ public class GameControl : MonoBehaviour {
 	public List<String> fileNames = new List<String>();
 	public TextAsset urls;
 
+	private byte[][] allImgs;
 	private byte[] imgBytes;
-	public string[] imgURL; 
+	private int imagesI;
+	private string[] imgURL; 
 
 	void Awake () {
 		//Si l'objet permanent n'existe pas
@@ -73,14 +75,21 @@ public class GameControl : MonoBehaviour {
 				StartCoroutine (Download (i));
 			}
 			PlayerPrefs.SetInt("Telecharge", 1);
-		} 
-		if (PlayerPrefs.GetInt ("Telecharge") == 1) { //Si on a déjà téléchargé
+		} else { //Si on a déjà téléchargé
 			LoadingThreads();
 		}
 	}
 
 	void Update() {
-		
+		if (imagesI != 0 && imagesI == fileNames.Count) {
+			for (int i = 0; i < fileNames.Count; i++) {
+				Texture2D texture = new Texture2D (256, 256, TextureFormat.DXT5, false);
+				texture.LoadImage (allImgs[i]);
+				Sprite image = Sprite.Create (texture, new Rect (0, 0, texture.width, texture.height), Vector2.zero);
+				img.sprite = image;
+			}
+			imagesI = 0;
+		}
 	}
 
 	/*Coroutine qui nous permet de télécharger les images la prémière fois qu'on lance l'application.
@@ -110,6 +119,8 @@ public class GameControl : MonoBehaviour {
 		//Création du fichier avec notre texture dans notre terminal
 		string path = filePath + fileName;
 		System.IO.File.WriteAllBytes (path, bytes);
+
+		LoadingThreads ();
 	}
 
 	/*Si les textures dont nous avons besoin sont déjà dans le stockage interne de notre appareil,
@@ -123,20 +134,23 @@ public class GameControl : MonoBehaviour {
 			fileNames.Add (files [i]);
 		}
 
-		//print (fileNames.Count);
+		//Le tableau de tableaus de bytes est initialísé une fois que l'on sait combien d'images on a
+		allImgs = new byte[fileNames.Count][];
+
 		/*Mainteant, on cherche et charge toutes les images d'après les noms de fichier stockés dans la liste. Chaque
 		 * image est chargée dans un thread separé pour pouvoir toutes les charger au même temps*/
 		for (int i=0; i<fileNames.Count; i++) {
 			Thread t = new Thread(() => LoadTexture(i));
 			t.Start ();
-			Texture2D texture = new Texture2D (256, 256, TextureFormat.DXT5, false);
-			texture.LoadImage (imgBytes);
-			Sprite image = Sprite.Create (texture, new Rect (0, 0, texture.width, texture.height), Vector2.zero);
-			img.sprite = image;
 		}
 	}
 
+	/*Ne pouvant pas utiliser les fonctions de l'API de Unity dans un thread qui n'est pas le principal, j'ai decidé de
+	 * stocker les bytes de chaque image dans un tableau que l'on parcourt une fois qu'on a fini de tout charger pour les
+	 * convertir en Texture2D exploitables par Unity*/
 	void LoadTexture(int index) {
 		imgBytes = System.IO.File.ReadAllBytes (filePath + fileNames[index-1]);
+		allImgs [imagesI] = imgBytes;
+		imagesI++;
 	}
 }
