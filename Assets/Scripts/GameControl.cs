@@ -53,6 +53,7 @@ public class GameControl : MonoBehaviour {
 		 * des images. Elles sont stockées dans un fichier texte*/
 		imgURL = urls.text.Split ('\n');
 
+		//Ligne laissée en place en commentaire pour vous permettre de tester plus facilement si vous voulez
 		//PlayerPrefs.DeleteAll ();
 
 		//D'abord on regarde si on a déjà une variable pour savoir si on a téléchargé ou pas, si non, on la définit
@@ -81,13 +82,9 @@ public class GameControl : MonoBehaviour {
 	}
 
 	void Update() {
+		//Quand toutes les images ont été chargées et transformées en bytes[] et que donc on peut en faire des textures
 		if (imagesI != 0 && imagesI == fileNames.Count) {
-			for (int i = 0; i < fileNames.Count; i++) {
-				Texture2D texture = new Texture2D (256, 256, TextureFormat.DXT5, false);
-				texture.LoadImage (allImgs[i]);
-				Sprite image = Sprite.Create (texture, new Rect (0, 0, texture.width, texture.height), Vector2.zero);
-				img.sprite = image;
-			}
+			StartCoroutine (LoadOnTexture ());
 			imagesI = 0;
 		}
 	}
@@ -105,6 +102,21 @@ public class GameControl : MonoBehaviour {
 		//Pour chaque image téléchargée, on commence alors un thread pour la sauvegarder
 		Thread t = new Thread(() => SaveTexture (newBytes, index));
 		t.Start ();
+	}
+
+	/*Coroutine pour le chargement des images en parallèle (mais pas aussi optimisé qu'un thread), qui permet
+	 * l'usage de l'API Unity*/
+	IEnumerator LoadOnTexture() {
+		for (int i = 0; i < fileNames.Count; i++) {
+			Texture2D texture = new Texture2D (256, 256, TextureFormat.DXT5, false);
+			texture.LoadImage (allImgs[i]);
+			/*Il n'y a qu'une image pour cet exemple, mais il serait très simple d'avoir une liste, ou un tableau, 
+			 * avec toutes les images dans notre jeu que nous avons besoin de charger et les prendre de là pour 
+			 * charger chaque texture couplée à chaque sprite*/
+			Sprite image = Sprite.Create (texture, new Rect (0, 0, texture.width, texture.height), Vector2.zero);
+			img.sprite = image;
+		}
+		yield return null;
 	}
 
 	/*Fonction qui permet de sauvegarder la texture que l'on vient de télécharger afin de l'utiliser
